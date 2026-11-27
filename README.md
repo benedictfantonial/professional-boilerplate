@@ -64,3 +64,33 @@ I would add a role field to the User entity, such as admin or user. After authen
 For example:
 - Admin users can manage all users.
 - Regular users can only access their own information.
+
+1. Why is email verification important for security? What problems does it prevent?
+Email verification confirms that a user actually owns and has access to the email address used to register. It prevents unauthorized sign-ups with someone else's email, reduces fake/bot accounts, ensures password resets and critical alerts reach the real account owner, and helps protect sender reputation by avoiding undeliverable or unwanted emails.
+
+2. Explain the "always return success" pattern in forgot password. Why is it a security best practice?
+Returning a generic success message regardless of whether the email exists in the database hides account existence from callers. This prevents attackers from probing /forgot-password to build a list of valid user emails and launch targeted phishing or credential-stuffing attacks.
+
+3. What's the difference between a verification token and a reset token? Why do they have different expiration times?
+A verification token proves ownership of an email address to activate an unverified account, whereas a reset token authorizes changing a user's password. Verification tokens typically have a longer window (such as 24 hours in your service) because users may check email later, while reset tokens have a shorter window (such as 1 hour) to limit the time window if a password-reset email is intercepted or requested unexpectedly.
+
+4. Why do we use crypto.randomBytes(32) instead of Math.random() or Date.now() for token generation?
+crypto.randomBytes(32) uses a cryptographically secure pseudo-random number generator (CSPRNG) to produce 256 bits of unpredictable entropy, making tokens practically impossible to guess or brute-force. Math.random() is not cryptographically secure and can be predictable, and Date.now() is deterministic/guessable based on timestamps.
+
+5. What happens if a user never verifies their email? How does your system handle this?
+In your implementation, an unverified user is created with isVerified: false, verificationToken, and verificationTokenExpiry. Login is blocked for unverified accounts (returning 401 / UNAUTHORIZED), forgotPassword skips unverified accounts while still returning a generic success message, and resendVerification lets them request a fresh token if they still need to verify.
+
+6. Explain why tokens are cleared after use. What security risk does this prevent?
+Clearing verificationToken / verificationTokenExpiry (and resetPasswordToken / resetPasswordExpiry) after a token is used makes it single-use. This prevents replay attacks—such as someone reusing an old link found in browser history, logs, or a compromised inbox to re-trigger verification or reset a password again.
+
+7. What is email enumeration and how does your implementation prevent it?
+Email enumeration is when an attacker determines whether an email address is registered by observing differences in responses, error messages, or behavior across endpoints. Your VerificationService.forgotPassword implementation prevents this by returning the same generic message whether the email doesn't exist, is unverified, or is verified—and resendVerification similarly avoids revealing whether an account exists.
+
+8. If you had to implement two-factor authentication (2FA) on top of this system, how would you approach it?
+I would add 2FA fields on the User entity (such as isTwoFactorEnabled, an encrypted twoFactorSecret, and hashed backup codes), allow users to enroll via an authenticator app (TOTP) or email/SMS OTP, and update /api/auth/login so valid password credentials issue a short-lived pending/challenge token rather than a full session/JWT until the second factor is verified.
+
+9. What are the trade-offs between using Ethereal (test service) vs. SendGrid (production service)?
+Ethereal is free, requires zero real recipient setup, and provides instant web previews for local development/testing, but it never delivers emails to real inboxes and isn't meant for production traffic. SendGrid delivers real emails at scale with analytics, templates, and deliverability tooling, but involves paid tiers, account/domain setup (SPF/DKIM/DMARC), and external rate/reputation management.
+
+10. How would you handle a situation where a user's email provider marks your emails as spam?
+I would configure proper domain authentication (SPF, DKIM, and DMARC), send from a dedicated verified domain/sender rather than a generic address, keep email copy and links clean and transparent, monitor bounce/spam reports and blocklists, and provide clear guidance (like checking the spam folder or resending verification) while keeping automated resend rate-limited.

@@ -1,3 +1,4 @@
+
 export class AppError extends Error {
     public readonly statusCode: number;
     public readonly errorCode: string;
@@ -10,23 +11,35 @@ export class AppError extends Error {
         isOperational = true
     ) {
         super(message);
+
         this.statusCode = statusCode;
         this.errorCode = errorCode;
         this.isOperational = isOperational;
-        
+
         Error.captureStackTrace(this, this.constructor);
         Object.setPrototypeOf(this, new.target.prototype);
     }
 }
 
+// Bad Request Error (400)
+export class BadRequestError extends AppError {
+    constructor(message: string) {
+        super(message, 400, 'BAD_REQUEST');
+    }
+}
+
+// Not Found Error (404)
 export class NotFoundError extends AppError {
     constructor(resource: string, id?: string | number) {
-        const message = id 
-            ? `${resource} with ID idnotfound`:`{resource} not found`;
+        const message = id
+            ? `${resource} with ID ${id} not found`
+            : `${resource} not found`;
+
         super(message, 404, 'NOT_FOUND');
     }
 }
 
+// Validation Error (400)
 export class ValidationError extends AppError {
     public readonly details: any;
 
@@ -36,24 +49,30 @@ export class ValidationError extends AppError {
     }
 }
 
+// Unauthorized Error (401)
 export class UnauthorizedError extends AppError {
     constructor(message = 'Authentication required') {
         super(message, 401, 'UNAUTHORIZED');
     }
 }
 
+// Forbidden Error (403)
 export class ForbiddenError extends AppError {
-    constructor(message = 'You do not have permission to perform this action') {
+    constructor(
+        message = 'You do not have permission to perform this action'
+    ) {
         super(message, 403, 'FORBIDDEN');
     }
 }
 
+// Conflict Error (409)
 export class ConflictError extends AppError {
     constructor(message: string) {
         super(message, 409, 'CONFLICT');
     }
 }
 
+// Internal Server Error (500)
 export class InternalError extends AppError {
     constructor(message = 'An unexpected error occurred') {
         super(message, 500, 'INTERNAL_ERROR', false);
